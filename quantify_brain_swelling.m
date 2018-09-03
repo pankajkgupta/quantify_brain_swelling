@@ -4,10 +4,13 @@ close all;
 %list all the subjects to be processed
 data_path = './';
 sub_list = {'m1'};
+regmethod = 1;
+runningbaseline = 1;
 
 for i = 1:length(sub_list)
     sub = sub_list{i};
-    baseline  = imread([data_path sub '/baseline_spckl.tif']);
+    baselineName = 'baseline_spckl.tif';
+    baseline  = imread([data_path sub '/' baselineName]);
 %     baseline  = imread([data_path sub '/day0/12 min dw2 sp.tif']);
 
     % Create a mask if does not exist
@@ -33,38 +36,31 @@ for i = 1:length(sub_list)
         dailyTiffs = dir([data_path sub '/' recordDays(ix_day).name '/*.tif']);
         dailyTiffsName = natsort({dailyTiffs.name});
         
-        toRegister  = imread([data_path sub '/' recordDays(ix_day).name '/' dailyTiffsName{1}]);
+        toRegister  = imread([data_path sub '/' recordDays(ix_day).name '/' ...
+            dailyTiffsName{1}]);
 
-        figure; imshowpair(baseline, toRegister,'Scaling','independent');
-
-        [optimizer, metric] = imregconfig('multimodal');
-
-        optimizer.InitialRadius = 0.0001;
-        optimizer.Epsilon = 1.5e-4;
-        optimizer.GrowthFactor = 1.001;
-        optimizer.MaximumIterations = 200;
-
-        % tform = imregtform(toRegister, baseline, 'affine', optimizer, metric)
-        tform = imregtform(toRegister, baseline, 'similarity', optimizer, metric, 'PyramidLevels', 5);
+%         tform = registrationbank(toRegister, baseline, regmethod);
 
         for ix_img = 1:length(dailyTiffsName)
             close all;
             fprintf('\t registering %s\n', dailyTiffsName{ix_img});
-%             toRegister = imread([data_path sub '/' recordDays(ix_day).name '/' dailyTiffs(ix_img).name]);
-%             figure; imshowpair(baseline, toRegister,'Scaling','independent');
+            toRegister = imread([data_path sub '/' recordDays(ix_day).name '/' dailyTiffs(ix_img).name]);
+            figure; imshowpair(baseline, toRegister,'Scaling','joint');
+            tform = registrationbank(toRegister, baseline, regmethod);
             
             registered = imwarp(toRegister,tform,'OutputView',imref2d(size(baseline)));
 
-            figure
-            imshowpair(baseline, registered,'Scaling','independent')
-            title(['baseline + ' dailyTiffsName{ix_img}])
-            saveas(gcf, [data_path sub '/' dailyTiffsName{ix_img}(1:end-4) ' registered.png']);
+            figure; imshowpair(baseline, registered,'Scaling','joint');
+            title([baselineName ' + ' dailyTiffsName{ix_img}]);
+            saveas(gcf, [data_path sub '/' dailyTiffsName{ix_img}(1:end-4) ...
+                ' registered.png']);
             
             baselineMasked = baseline;
             baselineMasked(~binaryMask) = 0;
             registeredMasked = registered;
             registeredMasked(~binaryMask) = 0;
             [u,v] = getoptflow(baselineMasked,registeredMasked);
+%             [u,v] = getoptflow(baseline,registered);
             
             % downsize u and v
             u_deci = u(1:10:end, 1:10:end);
@@ -74,19 +70,37 @@ for i = 1:length(sub_list)
             [X,Y] = meshgrid(1:n, 1:m);
             X_deci = X(1:20:end, 1:20:end);
             Y_deci = Y(1:20:end, 1:20:end);
+            
+            % Get coordinates of the boundary of the freehand drawn region.
+            structBoundaries = bwboundaries(binaryMask);
+            % First cell array is for left hemi
+            xy=structBoundaries{1}; % Get n by 2 array of x,y coordinates.
+            x = xy(:, 2); % Columns.
+            y = xy(:, 1); % Rows.
+            polyin = polyshape(x,y);
+            interiorL = polyin.isinterior(X_deci(:),Y_deci(:));
+            % Second one is for right hemi
+            xy=structBoundaries{2}; % Get n by 2 array of x,y coordinates.
+            x = xy(:, 2); % Columns.
+            y = xy(:, 1); % Rows.
+            polyin = polyshape(x,y);
+            interiorR = polyin.isinterior(X_deci(:),Y_deci(:));
 
 
             figure();
             imshow(registeredMasked);
             hold on;
             % draw the velocity vectors
-            quiver(X_deci, Y_deci, u_deci,v_deci, 'y')
+%             quiver(X_deci([interiorL, interiorR]), Y_deci([interiorL, interiorR]), u_deci([interiorL, interiorR]),v_deci([interiorL, interiorR]), 'y')
+            quiver(X_deci(interiorL), Y_deci(interiorL), u_deci(interiorL),v_deci(interiorL), 'y')
+            quiver(X_deci(interiorR), Y_deci(interiorR), u_deci(interiorR),v_deci(interiorR), 'y')
             title(['Optical flow: ' dailyTiffsName{ix_img}]);
             saveas(gcf, [data_path sub '/' dailyTiffsName{ix_img}(1:end-4) ' optflow.png']);
-            
-            %set baseline as current image
-%             baseline = toRegister;
-            
+            if runningbaseline
+                %set baseline as current image
+                baselineName = dailyTiffsName{ix_img};
+                baseline = toRegister;
+            end
         end
         
     end

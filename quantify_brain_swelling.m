@@ -8,10 +8,16 @@ regmethod = 1;
 runningbaseline = 1;
 
 for i = 1:length(sub_list)
+    
     sub = sub_list{i};
+    
     baselineName = 'baseline_spckl.tif';
     baseline  = imread([data_path sub '/' baselineName]);
 %     baseline  = imread([data_path sub '/day0/12 min dw2 sp.tif']);
+
+    imagefiles = {};
+    totalswellL = [];
+    totalswellR = [];
 
     % Create a mask if does not exist
     maskPath = [data_path sub '/baseline_mask.png'];
@@ -87,6 +93,10 @@ for i = 1:length(sub_list)
             interiorR = polyin.isinterior(X_deci(:),Y_deci(:));
 
 
+            imagefiles = [imagefiles; dailyTiffsName{ix_img}];
+            totalswellL = [totalswellL; sum(sqrt(u_deci(interiorL).^2 + v_deci(interiorL).^2))];
+            totalswellR = [totalswellR; sum(sqrt(u_deci(interiorR).^2 + v_deci(interiorR).^2))];
+            
             figure();
             imshow(registeredMasked);
             hold on;
@@ -104,5 +114,8 @@ for i = 1:length(sub_list)
         end
         
     end
-
+    fname=[sub '_swelling.csv'];
+    writetable(cell2table([imagefiles num2cell(totalswellL) num2cell(totalswellR)]),fname,'writevariablenames',0);
+    figure; plot(totalswellL); hold on; plot(totalswellR); title('Progression of swelling'); xlabel('time course'); ylabel('total optical flow'); legend('Left swelling', 'Right swelling'); axis tight; xticks([1:numel(imagefiles)]); xticklabels(imagefiles); xtickangle(70);
+    saveas(gcf, [data_path sub '/total optflow timecourse.png']);
 end

@@ -114,8 +114,13 @@ for i = 1:length(sub_list)
         end
         
     end
+    totalswellL = cumsum(totalswellL);
+    totalswellR = cumsum(totalswellR);
     fname=[sub '_swelling.csv'];
     writetable(cell2table([imagefiles num2cell(totalswellL) num2cell(totalswellR)]),fname,'writevariablenames',0);
-    figure; plot(totalswellL); hold on; plot(totalswellR); title('Progression of swelling'); xlabel('time course'); ylabel('total optical flow'); legend('Left swelling', 'Right swelling'); axis tight; xticks([1:numel(imagefiles)]); xticklabels(imagefiles); xtickangle(70);
+    figure; plot(totalswellL); hold on; plot(totalswellR); 
+    title('Progression of swelling'); 
+    xlabel('time course'); ylabel('total optical flow(pixels)'); 
+    legend('Left', 'Right'); axis tight; xticks([1:numel(imagefiles)]); xticklabels(imagefiles); xtickangle(70);
     saveas(gcf, [data_path sub '/total optflow timecourse.png']);
 end

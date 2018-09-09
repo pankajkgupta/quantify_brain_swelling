@@ -101,7 +101,6 @@ for i = 1:length(sub_list)
             imshow(registeredMasked);
             hold on;
             % draw the velocity vectors
-%             quiver(X_deci([interiorL, interiorR]), Y_deci([interiorL, interiorR]), u_deci([interiorL, interiorR]),v_deci([interiorL, interiorR]), 'y')
             quiver(X_deci(interiorL), Y_deci(interiorL), u_deci(interiorL),v_deci(interiorL), 'y')
             quiver(X_deci(interiorR), Y_deci(interiorR), u_deci(interiorR),v_deci(interiorR), 'y')
             title(['Optical flow: ' dailyTiffsName{ix_img}]);
@@ -117,10 +116,12 @@ for i = 1:length(sub_list)
     totalswellL = cumsum(totalswellL);
     totalswellR = cumsum(totalswellR);
     fname=[sub '_swelling.csv'];
-    writetable(cell2table([imagefiles num2cell(totalswellL) num2cell(totalswellR)]),fname,'writevariablenames',0);
+    writetable(cell2table([imagefiles num2cell(totalswellL) num2cell(totalswellR)]),...
+        fname,'writevariablenames',0);
     figure; plot(totalswellL); hold on; plot(totalswellR); 
     title('Progression of swelling'); 
     xlabel('time course'); ylabel('total optical flow(pixels)'); 
-    legend('Left', 'Right'); axis tight; xticks([1:numel(imagefiles)]); xticklabels(imagefiles); xtickangle(70);
+    legend('Left', 'Right'); axis tight; xticks([1:numel(imagefiles)]); 
+    xticklabels(imagefiles); xtickangle(70);
     saveas(gcf, [data_path sub '/total optflow timecourse.png']);
 end

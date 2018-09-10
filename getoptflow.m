@@ -2,9 +2,9 @@ function [u,v] = getoptflow(fr1,fr2)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
 im1t = im2double(fr1);
-im1 = imresize(im1t, 0.5); % downsize to half
+im1 = imresize(im1t, 1); % downsize to half
 im2t = im2double(fr2);
-im2 = imresize(im2t, 0.5); % downsize to half
+im2 = imresize(im2t, 1); % downsize to half
 
 ww = 20;
 w = round(ww/2);

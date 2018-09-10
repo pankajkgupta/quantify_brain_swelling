@@ -11,16 +11,18 @@ for i = 1:length(sub_list)
     
     sub = sub_list{i};
     
-    baselineName = 'baseline_spckl.tif';
+    baselineName = 'baseline spckl.tif';
     baseline  = imread([data_path sub '/' baselineName]);
 %     baseline  = imread([data_path sub '/day0/12 min dw2 sp.tif']);
 
     imagefiles = {};
     totalswellL = [];
     totalswellR = [];
+    maxswellL = [];
+    maxswellR = [];
 
     % Create a mask if does not exist
-    maskPath = [data_path sub '/baseline_mask.png'];
+    maskPath = [data_path sub '/baseline mask.png'];
     if exist(maskPath, 'file') == 2
         binaryMask = imread(maskPath);
     else
@@ -65,8 +67,9 @@ for i = 1:length(sub_list)
             baselineMasked(~binaryMask) = 0;
             registeredMasked = registered;
             registeredMasked(~binaryMask) = 0;
-            [u,v] = getoptflow(baselineMasked,registeredMasked);
-%             [u,v] = getoptflow(baseline,registered);
+%             [u,v] = getoptflow(baselineMasked,registeredMasked);
+            [u,v] = getoptflow(baseline,registered);
+            imageflow = sqrt(u.^2 + v.^2);
             
             % downsize u and v
             u_deci = u(1:10:end, 1:10:end);
@@ -74,8 +77,8 @@ for i = 1:length(sub_list)
             % get coordinate for u and v in the original frame
             [m, n] = size(baselineMasked);
             [X,Y] = meshgrid(1:n, 1:m);
-            X_deci = X(1:20:end, 1:20:end);
-            Y_deci = Y(1:20:end, 1:20:end);
+            X_deci = X(1:10:end, 1:10:end);
+            Y_deci = Y(1:10:end, 1:10:end);
             
             % Get coordinates of the boundary of the freehand drawn region.
             structBoundaries = bwboundaries(binaryMask);
@@ -85,17 +88,25 @@ for i = 1:length(sub_list)
             y = xy(:, 1); % Rows.
             polyin = polyshape(x,y);
             interiorL = polyin.isinterior(X_deci(:),Y_deci(:));
+            binaryMaskL = roipoly(binaryMask, x, y);
+            imageflowL = imageflow;
+            imageflowL(~binaryMaskL) = 0;
             % Second one is for right hemi
             xy=structBoundaries{2}; % Get n by 2 array of x,y coordinates.
             x = xy(:, 2); % Columns.
             y = xy(:, 1); % Rows.
             polyin = polyshape(x,y);
             interiorR = polyin.isinterior(X_deci(:),Y_deci(:));
+            binaryMaskR = roipoly(binaryMask, x, y);
+            imageflowR = imageflow;
+            imageflowR(~binaryMaskR) = 0;
 
 
             imagefiles = [imagefiles; dailyTiffsName{ix_img}];
             totalswellL = [totalswellL; sum(sqrt(u_deci(interiorL).^2 + v_deci(interiorL).^2))];
             totalswellR = [totalswellR; sum(sqrt(u_deci(interiorR).^2 + v_deci(interiorR).^2))];
+            maxswellL = [maxswellL; max(max(imageflowL))];
+            maxswellR = [maxswellR; max(max(imageflowR))];
             
             figure();
             imshow(registeredMasked);
@@ -110,18 +121,36 @@ for i = 1:length(sub_list)
                 baselineName = dailyTiffsName{ix_img};
                 baseline = toRegister;
             end
+            
+            [y,x] = find(imageflowL == max(max(imageflowL)));
+            figure; imagesc(imageflowL); hold on; plot(x,y,'*r');
+            saveas(gcf, [data_path sub '/' dailyTiffsName{ix_img}(1:end-4) ' optflow_left.png']);
+            [y,x] = find(imageflowR == max(max(imageflowR)));
+            figure; imagesc(imageflowR); hold on; plot(x,y,'*r');
+            saveas(gcf, [data_path sub '/' dailyTiffsName{ix_img}(1:end-4) ' optflow_right.png']);
         end
         
     end
     totalswellL = cumsum(totalswellL);
     totalswellR = cumsum(totalswellR);
+    maxswellL = cumsum(maxswellL);
+    maxswellR = cumsum(maxswellR);
+    
     fname=[sub '_swelling.csv'];
-    writetable(cell2table([imagefiles num2cell(totalswellL) num2cell(totalswellR)]),...
-        fname,'writevariablenames',0);
-    figure; plot(totalswellL); hold on; plot(totalswellR); 
+    writetable(cell2table([imagefiles num2cell(totalswellL) num2cell(totalswellR)...
+        num2cell(maxswellL) num2cell(maxswellR)]), fname,'writevariablenames',1);
+    figure; 
+    subplot(121); plot(totalswellL); hold on; plot(totalswellR); 
     title('Progression of swelling'); 
     xlabel('time course'); ylabel('total optical flow(pixels)'); 
     legend('Left', 'Right'); axis tight; xticks([1:numel(imagefiles)]); 
     xticklabels(imagefiles); xtickangle(70);
+    
+    subplot(122); plot(maxswellL); hold on; plot(maxswellR);
+    title('maximum swelling'); 
+    xlabel('time course'); ylabel('max. optical flow(pixels)'); 
+    legend('Left', 'Right'); axis tight; xticks([1:numel(imagefiles)]); 
+    xticklabels(imagefiles); xtickangle(70);
+    
     saveas(gcf, [data_path sub '/total optflow timecourse.png']);
 end

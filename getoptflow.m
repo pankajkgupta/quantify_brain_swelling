@@ -6,7 +6,7 @@ im1 = imresize(im1t, 1); % downsize to half
 im2t = im2double(fr2);
 im2 = imresize(im2t, 1); % downsize to half
 
-ww = 20;
+ww = 45;
 w = round(ww/2);
 
 % Lucas Kanade Here

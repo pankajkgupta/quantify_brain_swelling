@@ -2,11 +2,11 @@ function [tform] = registrationbank(toRegister, baseline, method)
 %UNTITLED2 Summary of this function goes here
 %   Detailed explanation goes here
 
-[optimizer, metric] = imregconfig('multimodal');
-optimizer.InitialRadius = 0.0001;
-optimizer.Epsilon = 1.5e-4;
-optimizer.GrowthFactor = 1.001;
-optimizer.MaximumIterations = 500;
+[optimizer, metric] = imregconfig('monomodal');
+% optimizer.InitialRadius = 0.0001;
+% optimizer.Epsilon = 1.5e-4;
+% optimizer.GrowthFactor = 1.001;
+% optimizer.MaximumIterations = 500;
         
 switch method
     case 1
